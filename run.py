@@ -4,21 +4,42 @@ import json
 import uuid
 
 async def get_mail():
+    url = "https://api.tikhub.io/api/v1/temp_mail/v1/get_temp_email_address"
+    headers = {
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "8a04ad452b338502-HKG",
+        "content-length": "358",
+        "content-type": "application/json",
+        "date": "Tue,09 Jul 2024 01:52:49 GMT",
+        "nel": '{"success_fraction":0,"report_to":"cf-nel","max_age":604800}',
+        "report-to": '{"endpoints":[{"url":"https://a.nel.cloudflare.com/report/v4?s=jIw5I4w8t58DHdNyXPW1JGHdala7MKTwZT3cyYYv1hGo6eGxdCL3IGfuL/Jb9c/vaepb/Mtzve+aQAyByrdpf8Vat6McQR2qnnwpBaQSTFvWh3Zq8DXeXvL3d1E27C8="}],"group":"cf-nel","max_age":604800}',
+        "server": "cloudflare"
+    }
     async with aiohttp.ClientSession() as session:
-        async with session.get("https://www.1secmail.com/api/v1/?action=genRandomMailbox") as response:
-            response_data = await response.json()
-            return response_data[0]
+        async with session.get(url, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+                email = data.get("email")
+                if email:
+                    print(f"生成邮箱: {email}")
+                    return email
+                else:
+                    print("获取邮箱失败")
+                    return None
+            else:
+                print(f"请求失败，状态码: {response.status}")
+                return None
 
 async def get_code(mail):
     try:
         login, domain = mail.split('@')
-        url = f"https://www.1secmail.com/api/v1/?action=getMessages&login={login}&domain={domain}"
+        url = f"https://api.tikhub.io/api/v1/temp_mail/v1/get_email/{mail}"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as response:
                 messages = await response.json()
                 if messages:
                     message_id = messages[0]['id']
-                    url = f"https://www.1secmail.com/api/v1/?action=readMessage&login={login}&domain={domain}&id={message_id}"
+                    url = f"https://api.tikhub.io/api/v1/temp_mail/v1/read_email/{message_id}"
                     async with session.get(url) as response:
                         message = await response.json()
                         for line in message['textBody'].split('\n'):
