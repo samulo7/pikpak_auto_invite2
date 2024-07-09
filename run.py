@@ -7,7 +7,7 @@ import aiohttp
 import uuid
 from rich import print_json
 
-DEBUG_MODE = False
+DEBUG_MODE = True
 PROXY = ''
 PUSHPLUS_TOKEN = os.getenv('PUSHPLUS_TOKEN') or ''
 INVITE_CODE = os.getenv('INVITE_CODE') or input('请输入邀请码: ')
@@ -135,6 +135,7 @@ async def get_mail():
         async with session.post(url, json=json_data, ssl=False) as response:
             response_data = await response.json()
             mail = response_data['email']
+            print(f"获取到邮箱: {mail}")  # Debug 信息
         return mail
 
 async def get_code(mail, max_retries=10, delay=1):
@@ -147,9 +148,10 @@ async def get_code(mail, max_retries=10, delay=1):
                 if html:
                     text = (html[0])['body_text']
                     code = re.search('\\d{6}', text).group()
-                    print(f'获取邮箱验证码:{code}')
+                    print(f'获取邮箱验证码: {code}')  # Debug 信息
                     return code
                 else:
+                    print("没有获取到邮件内容，等待中...")  # Debug 信息
                     await asyncio.sleep(delay)
                     retries += 1
     print("获取邮箱邮件内容失败，未收到邮件...")
@@ -182,12 +184,12 @@ async def init(xid, mail):
         'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="100"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': '"Windows"',
-        'x-client-id': 'YvtoWO6HNHiuG98x',
+        'x-client-id': 'YvtoWO6GNHiuG98x',
         'x-client-version': '2.3.2.4101',
         'x-device-id': xid,
         'x-device-model': 'electron%2F18.3.15',
         'x-device-name': 'PC-Electron',
-        'x-device-sign': 'wdi10.ce8280a2dc704cd49f0be1c4eca40059xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+        'x-device-sign': await get_sign(xid, mail),
         'x-net-work-type': 'NONE',
         'x-os-version': 'win',
         'x-req-id': 'dcebe156-3292-42ea-8fa8-3c4c7c70f758',
@@ -196,6 +198,8 @@ async def init(xid, mail):
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=body, headers=headers) as response:
             result = await response.json()
+            if DEBUG_MODE:
+                print_json(data=result)  # Debug 信息
             return result['captcha_token']
 
 async def finish_captcha(captcha_token, verify_code, xid):
@@ -239,6 +243,8 @@ async def finish_captcha(captcha_token, verify_code, xid):
     async with aiohttp.ClientSession() as session:
         async with session.post(url, json=body, headers=headers) as response:
             result = await response.json()
+            if DEBUG_MODE:
+                print_json(data=result)  # Debug 信息
             return result
 
 async def main(invite_code):
